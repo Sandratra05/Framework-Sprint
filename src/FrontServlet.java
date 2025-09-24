@@ -1,44 +1,75 @@
-// ...existing code...
 import java.io.IOException;
+import java.io.PrintWriter;
 
 import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.FilterConfig;
+import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public class FrontServlet implements Filter {  
-
+public class FrontServlet extends HttpServlet {  
+    /**
+     * Traite les requêtes HTTP GET
+     */
     @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
-        // init si nécessaire
-    }
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
 
-    @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws IOException, ServletException {
+        // Configuration de la réponse
+        response.setContentType("text/html;charset=UTF-8");
+        PrintWriter out = response.getWriter();
+        
+        try {
+            // Construction de la réponse HTML
+            out.println("<!DOCTYPE html>");
+            out.println("<html>");
+            out.println("<head>");
+            out.println("<title>FrontServlet - GET</title>");
+            out.println("</head>");
+            out.println("<body>");
+            out.println("<h1>Test Framework</h1>");
+            out.println("<p>Requête GET traitée avec succès</p>");
 
-        HttpServletRequest req = (HttpServletRequest) request;
-        HttpServletResponse res = (HttpServletResponse) response;
-
-        String context = req.getContextPath();
-        String uri = req.getRequestURI();
-        String path = uri.substring(context.length());
-
-        if (path.equals("/front")) {
-            chain.doFilter(request, response);
-            return;
+            out.println("</body>");
+            out.println("</html>");
+        } finally {
+            out.close();
         }
-
-        req.getRequestDispatcher("/front").forward(req, res);
     }
-
+    
+    /**
+     * Traite les requêtes HTTP POST
+     */
     @Override
-    public void destroy() {
-        // cleanup si nécessaire
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        // Configuration de la réponse
+        response.setContentType("text/html;charset=UTF-8");
+        PrintWriter out = response.getWriter();
+        
+        try {
+            // Construction de la réponse HTML
+            out.println("<!DOCTYPE html>");
+            out.println("<html>");
+            out.println("<head>");
+            out.println("<title>FrontServlet - POST</title>");
+            out.println("</head>");
+            out.println("<body>");
+            out.println("<h1>FrontServlet - Méthode POST</h1>");
+            out.println("<p>Requête POST traitée avec succès</p>");
+            out.println("<p>Paramètres reçus :</p>");
+            out.println("<ul>");
+            
+            // Affichage des paramètres de la requête
+            request.getParameterMap().forEach((key, values) -> {
+                out.println("<li>" + key + " = " + String.join(", ", values) + "</li>");
+            });
+            
+            out.println("</ul>");
+            out.println("</body>");
+            out.println("</html>");
+        } finally {
+            out.close();
+        }
     }
 }
-// ...existing code...
