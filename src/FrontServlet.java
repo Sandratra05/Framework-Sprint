@@ -27,7 +27,7 @@ public class FrontServlet extends HttpServlet {
             out.println("</head>");
             out.println("<body>");
             out.println("<h1>Test Framework</h1>");
-            out.println("<p>Requête GET traitée avec succès</p>");
+            out.println("<p>Requête " + request.getRequestURI() + " traitée avec succès</p>");
 
             out.println("</body>");
             out.println("</html>");
