@@ -4,8 +4,8 @@ import annotations.TestUrl;
 import annotations.Url;
 
 public class Main {
-        public static void main(String[] args) throws NoSuchMethodException, SecurityException {
-        // Exemple : on scanne la classe UserController
+    public static void main(String[] args) throws NoSuchMethodException, SecurityException {
+        
         Class<?> clazz = TestUrl.class;
         
         if (clazz.getMethod("greeting").isAnnotationPresent(Url.class)) {
