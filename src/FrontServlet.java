@@ -7,6 +7,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+
+import utils.*;
+
+
 
 /**
  * This is the servlet that takes all incoming requests targeting the app - If
@@ -16,10 +22,17 @@ import jakarta.servlet.http.HttpServletResponse;
 public class FrontServlet extends HttpServlet {
 
     RequestDispatcher defaultDispatcher;
+    HashMap<String, Scan.MethodInfo> urlMapping;
 
     @Override
     public void init() {
         defaultDispatcher = getServletContext().getNamedDispatcher("default");
+
+        try {
+            this.urlMapping = Scan.getClassesWithAnnotations("main.java.controllers");            
+        } catch (Exception e) {
+
+        }
     }
 
     @Override
@@ -42,20 +55,41 @@ public class FrontServlet extends HttpServlet {
     }
 
     private void customServe(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        try (PrintWriter out = res.getWriter()) {
-            String uri = req.getRequestURI();
-            String responseBody = """
-                <html>
-                    <head><title>Resource Not Found</title></head>
-                    <body>
-                        <h1>Unknown resource</h1>
-                        <p>The requested URL was not found: <strong>%s</strong></p>
-                    </body>
-                </html>
-                """.formatted(uri);
+        String path = req.getRequestURI().substring(req.getContextPath().length());
+        
+        if (urlMapping.containsKey(path)) {
+            try {
+                Scan.MethodInfo info = urlMapping.get(path);
+                //Object instance = info.clazz.getDeclaredConstructor().newInstance();
+                //String result = (String) info.method.invoke(instance);
+                
+                res.setContentType("text/html;charset=UTF-8");
+                try (PrintWriter out = res.getWriter()) {
+                    out.println("Controller : " + info.clazz.getName() + "<br>");
+                    out.println("Method : " + info.method.getName());
+                }
+            } catch (Exception e) {
+                res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                try (PrintWriter out = res.getWriter()) {
+                    out.println("Error processing request: " + e.getMessage());
+                }
+            }
+        } else {
+            try (PrintWriter out = res.getWriter()) {
+                String uri = req.getRequestURI();
+                String responseBody = """
+                    <html>
+                        <head><title>Resource Not Found</title></head>
+                        <body>
+                            <h1>Unknown resource</h1>
+                            <p>The requested URL was not found: <strong>%s</strong></p>
+                        </body>
+                    </html>
+                    """.formatted(uri);
 
-            res.setContentType("text/html;charset=UTF-8");
-            out.println(responseBody);
+                res.setContentType("text/html;charset=UTF-8");
+                out.println(responseBody);
+            }
         }
     }
 
