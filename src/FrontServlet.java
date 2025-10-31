@@ -60,12 +60,13 @@ public class FrontServlet extends HttpServlet {
         if (urlMapping.containsKey(path)) {
             try {
                 Scan.MethodInfo info = urlMapping.get(path);
-                Object instance = info.clazz.getDeclaredConstructor().newInstance();
-                String result = (String) info.method.invoke(instance);
+                //Object instance = info.clazz.getDeclaredConstructor().newInstance();
+                //String result = (String) info.method.invoke(instance);
                 
                 res.setContentType("text/html;charset=UTF-8");
                 try (PrintWriter out = res.getWriter()) {
-                    out.println(result);
+                    out.println("Controller : " + info.clazz.getName() + "<br>");
+                    out.println("Method : " + info.method.getName());
                 }
             } catch (Exception e) {
                 res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
