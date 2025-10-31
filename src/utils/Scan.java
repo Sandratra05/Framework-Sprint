@@ -2,28 +2,43 @@ package utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+
+import annotations.Controller;
+import annotations.Url;
 
 public class Scan {
 
-    //private static String BasePackage;
+    public static class MethodInfo {
+        public Class<?> clazz;
+        public Method method;
 
-    //public static HashMap<String, String> getClassesWithAnnotations() throws Exception {
-    //    HashMap<String, String> result = new HashMap<>();
-    //    String packageName = BasePackage; 
-    //    List<Class<?>> classes = getClasses(packageName);
+        public MethodInfo(Class<?> clazz, Method method) {
+            this.clazz = clazz;
+            this.method = method;
+        }
+    }
 
-    //    for (Class<?> clazz : classes) {
-    //        if (clazz.isAnnotationPresent(Controller.class)) {
-    //            Controller annotation = clazz.getAnnotation(Controller.class);
-    //            result.put(clazz.getName(), annotation.value());
-    //            System.out.println("Classe: " + clazz.getName() + " | value = " + annotation.value());
-    //        }
-    //    }
-    //    return result;
-    //}
+    public static HashMap<String, MethodInfo> getClassesWithAnnotations(String packageName) throws Exception {
+        HashMap<String, MethodInfo> result = new HashMap<>();
+        List<Class<?>> classes = getClasses(packageName);
+
+        for (Class<?> clazz : classes) {
+            if (clazz.isAnnotationPresent(Controller.class)) {
+                for (Method method : clazz.getDeclaredMethods()) {
+                    if (method.isAnnotationPresent(Url.class)) {
+                        String url = method.getAnnotation(Url.class).value();
+                        result.put(url, new MethodInfo(clazz, method));
+                    }
+                }
+            }
+        }
+        return result;
+    }
 
     public static List<Class<?>> getClasses(String packageName) throws IOException, ClassNotFoundException {
         String path = packageName.replace('.', '/');
@@ -49,4 +64,6 @@ public class Scan {
         }
         return classes;
     }
+
+
 }
