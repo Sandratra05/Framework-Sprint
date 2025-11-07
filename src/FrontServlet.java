@@ -1,5 +1,6 @@
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 
 import jakarta.servlet.RequestDispatcher;
@@ -7,8 +8,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Properties;
 
 import utils.*;
 
@@ -29,7 +30,19 @@ public class FrontServlet extends HttpServlet {
         defaultDispatcher = getServletContext().getNamedDispatcher("default");
 
         try {
-            this.urlMapping = Scan.getClassesWithAnnotations("main.java.controllers");            
+            Properties props = new Properties();
+            InputStream input = getClass().getClassLoader().getResourceAsStream("application.properties");
+            if (input != null) {
+                props.load(input);
+                String basePackage = props.getProperty("base.package", "controllers");
+                this.urlMapping = Scan.getClassesWithAnnotations(basePackage);
+            } else {
+                // Fallback si le fichier n'existe pas
+                this.urlMapping = Scan.getClassesWithAnnotations("controllers");
+            }
+
+            getServletContext().setAttribute("urlMapping", this.urlMapping);
+        
         } catch (Exception e) {
 
         }
@@ -57,16 +70,21 @@ public class FrontServlet extends HttpServlet {
     private void customServe(HttpServletRequest req, HttpServletResponse res) throws IOException {
         String path = req.getRequestURI().substring(req.getContextPath().length());
         
-        if (urlMapping.containsKey(path)) {
+        @SuppressWarnings("unchecked")
+        HashMap<String, Scan.MethodInfo> urlMaps = (HashMap<String, Scan.MethodInfo>) getServletContext().getAttribute("urlMapping");
+
+
+        if (urlMaps != null && urlMaps.containsKey(path)) {
             try {
-                Scan.MethodInfo info = urlMapping.get(path);
-                //Object instance = info.clazz.getDeclaredConstructor().newInstance();
-                //String result = (String) info.method.invoke(instance);
+                Scan.MethodInfo info = urlMaps.get(path);
+                Object instance = info.clazz.getDeclaredConstructor().newInstance();
+                String result = (String) info.method.invoke(instance);
                 
                 res.setContentType("text/html;charset=UTF-8");
                 try (PrintWriter out = res.getWriter()) {
                     out.println("Controller : " + info.clazz.getName() + "<br>");
                     out.println("Method : " + info.method.getName());
+                    out.println(result);
                 }
             } catch (Exception e) {
                 res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -81,8 +99,8 @@ public class FrontServlet extends HttpServlet {
                     <html>
                         <head><title>Resource Not Found</title></head>
                         <body>
-                            <h1>Unknown resource</h1>
-                            <p>The requested URL was not found: <strong>%s</strong></p>
+                            <h1>Error 404 - Not Found</h1>
+                            <p>Unknown ressource : The requested URL was not found: <strong>%s</strong></p>
                         </body>
                     </html>
                     """.formatted(uri);
