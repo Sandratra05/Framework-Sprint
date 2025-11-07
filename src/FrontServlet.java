@@ -99,8 +99,8 @@ public class FrontServlet extends HttpServlet {
                     <html>
                         <head><title>Resource Not Found</title></head>
                         <body>
-                            <h1>Unknown resource</h1>
-                            <p>The requested URL was not found: <strong>%s</strong></p>
+                            <h1>Error 404 - Not Found</h1>
+                            <p>Unknown ressource : The requested URL was not found: <strong>%s</strong></p>
                         </body>
                     </html>
                     """.formatted(uri);
