@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Properties;
 
 import utils.*;
+import view.ModelView;
 
 
 
@@ -78,14 +79,9 @@ public class FrontServlet extends HttpServlet {
             try {
                 Scan.MethodInfo info = urlMaps.get(path);
                 Object instance = info.clazz.getDeclaredConstructor().newInstance();
-                String result = (String) info.method.invoke(instance);
-                
-                res.setContentType("text/html;charset=UTF-8");
-                try (PrintWriter out = res.getWriter()) {
-                    out.println("Controller : " + info.clazz.getName() + "<br>");
-                    out.println("Method : " + info.method.getName());
-                    out.println(result);
-                }
+
+                redirection(instance, info, req, res);
+
             } catch (Exception e) {
                 res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 try (PrintWriter out = res.getWriter()) {
@@ -115,4 +111,23 @@ public class FrontServlet extends HttpServlet {
         defaultDispatcher.forward(req, res);
     }
 
+    private void redirection (Object instance, Scan.MethodInfo info, HttpServletRequest req, HttpServletResponse res) throws Exception {
+        if (info.method.invoke(instance) instanceof String) {
+
+            String result = (String) info.method.invoke(instance);
+            
+            res.setContentType("text/html;charset=UTF-8");
+            
+            try (PrintWriter out = res.getWriter()) {
+                out.println("Controller : " + info.clazz.getName() + "<br>");
+                out.println("Method : " + info.method.getName() + "<br>");
+                out.println(result);
+            }
+
+        } else if (info.method.invoke(instance) instanceof ModelView) {
+            ModelView mv = (ModelView) info.method.invoke(instance);
+            RequestDispatcher rd = req.getRequestDispatcher(mv.getView());
+            rd.forward(req, res);
+        }
+    }
 }
