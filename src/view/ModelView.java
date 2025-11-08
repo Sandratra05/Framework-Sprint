@@ -1,3 +1,4 @@
+package view;
 public class ModelView {
     public String view;
 
