@@ -18,6 +18,7 @@ public class Scan {
     public static class MethodInfo {
         public Class<?> clazz;
         public Method method;
+        public Map<String, String> urlParams = new HashMap<>();
 
         public MethodInfo(Class<?> clazz, Method method) {
             this.clazz = clazz;
