@@ -1,0 +1,100 @@
+package utils;
+
+import java.lang.reflect.Parameter;
+import java.util.Map;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+public class CheckParameters {
+    
+    public Object[] checkArgs(Scan.MethodInfo info, HttpServletRequest req) {
+        java.util.LinkedHashMap<String, String> singleParams = extractSingleParams(req);
+        java.util.HashSet<String> usedKeys = new java.util.HashSet<>();
+        Parameter[] methodParams = info.method.getParameters();
+        Object[] args = new Object[methodParams.length];
+        for (int i = 0; i < methodParams.length; i++) {
+            Parameter p = methodParams[i];
+            String raw = resolveValueForParam(p, singleParams, usedKeys);
+            args[i] = convertValueOrDefault(raw, p.getType());
+        }
+        return args;
+    }
+
+    public java.util.LinkedHashMap<String, String> extractSingleParams(HttpServletRequest req) {
+        java.util.LinkedHashMap<String, String> flat = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, String[]> e : req.getParameterMap().entrySet()) {
+            if (e.getValue() != null && e.getValue().length > 0) {
+                flat.put(e.getKey(), e.getValue()[0]);
+            }
+        }
+        return flat;
+    }
+
+    public boolean isSyntheticName(String name) {
+        return name != null && name.matches("arg\\d+");
+    }
+
+    public String resolveValueForParam(Parameter param, java.util.LinkedHashMap<String, String> singleParams, java.util.Set<String> used) {
+        String name = param.getName();
+        Class<?> type = param.getType();
+        // exact match if available
+        if (singleParams.containsKey(name)) {
+            used.add(name);
+            return singleParams.get(name);
+        }
+        if (!isSyntheticName(name)) {
+            return null; // non synthétique mais pas trouvé
+        }
+        // Heuristique pour paramètres synthétiques
+        String candidate = guessSyntheticParamValue(type, singleParams, used);
+        return candidate;
+    }
+
+    public String guessSyntheticParamValue(Class<?> type, java.util.LinkedHashMap<String, String> singleParams, java.util.Set<String> used) {
+        // priorité sur clés fréquentes
+        if ((type == int.class || type == Integer.class) && singleParams.containsKey("id") && !used.contains("id")) {
+            used.add("id");
+            return singleParams.get("id");
+        }
+        // Parcours des clés restantes
+        java.util.List<String> remainingKeys = new java.util.ArrayList<>();
+        for (String k : singleParams.keySet()) if (!used.contains(k)) remainingKeys.add(k);
+        // typage
+        for (String k : remainingKeys) {
+            String v = singleParams.get(k);
+            if (type == int.class || type == Integer.class) {
+                try { Integer.parseInt(v); used.add(k); return v; } catch (Exception ignored) {}
+            } else if (type == double.class || type == Double.class) {
+                try { Double.parseDouble(v); used.add(k); return v; } catch (Exception ignored) {}
+            } else if (type == boolean.class || type == Boolean.class) {
+                if ("true".equalsIgnoreCase(v) || "false".equalsIgnoreCase(v) || "on".equalsIgnoreCase(v) || "1".equals(v) || "0".equals(v)) { used.add(k); return v; }
+            }
+        }
+        // Pour String / autres: si une seule clé restante, la prendre
+        if (!(type.isPrimitive()) && type == String.class) {
+            if (remainingKeys.size() == 1) {
+                String k = remainingKeys.get(0); used.add(k); return singleParams.get(k);
+            }
+        }
+        return null;
+    }
+
+    public Object convertValueOrDefault(String value, Class<?> type) {
+        if (value == null) return getDefaultValue(type);
+        try {
+            if (type == int.class || type == Integer.class) return Integer.parseInt(value);
+            if (type == double.class || type == Double.class) return Double.parseDouble(value);
+            if (type == boolean.class || type == Boolean.class) return ("on".equalsIgnoreCase(value) || "1".equals(value)) ? true : Boolean.parseBoolean(value);
+            return value; // String ou autre
+        } catch (Exception e) {
+            return getDefaultValue(type);
+        }
+    }
+
+    private Object getDefaultValue(Class<?> type) {
+        if (type == int.class) return 0;
+        if (type == double.class) return 0.0;
+        if (type == boolean.class) return false;
+        return null;
+    }
+}

@@ -2,6 +2,7 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.lang.reflect.Parameter;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
@@ -114,20 +115,25 @@ public class FrontServlet extends HttpServlet {
     }
 
     private void redirection (Object instance, Scan.MethodInfo info, HttpServletRequest req, HttpServletResponse res) throws Exception {
-        if (info.method.invoke(instance) instanceof String) {
+        CheckParameters cp = new CheckParameters();
+        Object[] args = cp.checkArgs(info, req);
 
-            String result = (String) info.method.invoke(instance);
+        Object result = info.method.invoke(instance, args);
+
+        if (result instanceof String) {
+
+            String resultStr = (String) result;
             
             res.setContentType("text/html;charset=UTF-8");
             
             try (PrintWriter out = res.getWriter()) {
                 out.println("Controller : " + info.clazz.getName() + "<br>");
                 out.println("Method : " + info.method.getName() + "<br>");
-                out.println(result);
+                out.println(resultStr);
             }
 
-        } else if (info.method.invoke(instance) instanceof ModelView) {
-            ModelView mv = (ModelView) info.method.invoke(instance);
+        } else if (result instanceof ModelView) {
+            ModelView mv = (ModelView) result;
 
             for (Map.Entry<String, Object> entry : mv.getItems().entrySet()) {
                 req.setAttribute(entry.getKey(), entry.getValue());
@@ -137,4 +143,6 @@ public class FrontServlet extends HttpServlet {
             rd.forward(req, res);
         }
     }
+
+    
 }
