@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import utils.*;
@@ -126,6 +127,11 @@ public class FrontServlet extends HttpServlet {
 
         } else if (info.method.invoke(instance) instanceof ModelView) {
             ModelView mv = (ModelView) info.method.invoke(instance);
+
+            for (Map.Entry<String, Object> entry : mv.getItems().entrySet()) {
+                req.setAttribute(entry.getKey(), entry.getValue());
+            }
+            
             RequestDispatcher rd = req.getRequestDispatcher(mv.getView());
             rd.forward(req, res);
         }
