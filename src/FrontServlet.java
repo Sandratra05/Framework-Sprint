@@ -76,9 +76,10 @@ public class FrontServlet extends HttpServlet {
         HashMap<String, Scan.MethodInfo> urlMaps = (HashMap<String, Scan.MethodInfo>) getServletContext().getAttribute("urlMapping");
 
 
-        if (urlMaps != null && urlMaps.containsKey(path)) {
+        // find matching method (support patterns like /livres/{id})
+        Scan.MethodInfo info = Scan.findMatching(urlMaps, path);
+        if (info != null) {
             try {
-                Scan.MethodInfo info = urlMaps.get(path);
                 Object instance = info.clazz.getDeclaredConstructor().newInstance();
 
                 redirection(instance, info, req, res);
