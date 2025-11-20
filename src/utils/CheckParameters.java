@@ -4,6 +4,7 @@ import java.lang.reflect.Parameter;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
+import annotations.RequestParam;
 
 public class CheckParameters {
     
@@ -37,6 +38,15 @@ public class CheckParameters {
     public String resolveValueForParam(Parameter param, java.util.LinkedHashMap<String, String> singleParams, java.util.Set<String> used) {
         String name = param.getName();
         Class<?> type = param.getType();
+        // Priorité : annotation @RequestParam si présente et non vide
+        RequestParam rp = param.getAnnotation(RequestParam.class);
+        if (rp != null) {
+            String annotatedName = rp.value();
+            if (annotatedName != null && !annotatedName.isEmpty() && singleParams.containsKey(annotatedName)) {
+                used.add(annotatedName);
+                return singleParams.get(annotatedName);
+            }
+        }
         // exact match if available
         if (singleParams.containsKey(name)) {
             used.add(name);
