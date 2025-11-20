@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import annotations.Controller;
@@ -18,7 +19,7 @@ public class Scan {
     public static class MethodInfo {
         public Class<?> clazz;
         public Method method;
-        public Map<String, String> urlParams = new HashMap<>();
+        public Map<String, String> parametresUrl = new HashMap<>();
 
         public MethodInfo(Class<?> clazz, Method method) {
             this.clazz = clazz;
@@ -56,19 +57,43 @@ public class Scan {
 
         for (Map.Entry<String, MethodInfo> e : map.entrySet()) {
             String pattern = e.getKey();
-            String regex = patternToRegex(pattern);
+            String regex = motifEnRegex(pattern);
             try {
-                if (Pattern.matches(regex, path)) {
-                    return e.getValue();
+                Pattern p = Pattern.compile(regex);
+                Matcher m = p.matcher(path);
+                if (m.matches()) {
+                    MethodInfo info = e.getValue();
+                    // extraire les noms des paramètres et remplir parametresUrl
+                    List<String> noms = extraireNomsParametres(pattern);
+                    for (int i = 0; i < noms.size(); i++) {
+                        String val = m.group(i + 1);
+                        info.parametresUrl.put(noms.get(i), val);
+                    }
+                    return info;
                 }
             } catch (Exception ex) {
-                // ignorer pattern invalide
+                // ignorer motif invalide
             }
         }
         return null;
     }
 
-    private static String patternToRegex(String pattern) {
+    private static List<String> extraireNomsParametres(String pattern) {
+        List<String> noms = new ArrayList<>();
+        int idx = 0;
+        while ((idx = pattern.indexOf('{', idx)) != -1) {
+            int close = pattern.indexOf('}', idx + 1);
+            if (close != -1) {
+                noms.add(pattern.substring(idx + 1, close));
+                idx = close + 1;
+            } else {
+                break;
+            }
+        }
+        return noms;
+    }
+
+    private static String motifEnRegex(String pattern) {
         // Construire le regex en échappant les parties littérales et en
         // remplaçant les {param} par un segment capture qui n'inclut pas '/'.
         StringBuilder sb = new StringBuilder();

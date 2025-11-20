@@ -1,7 +1,12 @@
 package utils;
 
 import java.lang.reflect.Parameter;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import jakarta.servlet.http.HttpServletRequest;
 import annotations.RequestParam;
@@ -9,20 +14,31 @@ import annotations.RequestParam;
 public class CheckParameters {
     
     public Object[] checkArgs(Scan.MethodInfo info, HttpServletRequest req) {
-        java.util.LinkedHashMap<String, String> singleParams = extractSingleParams(req);
-        java.util.HashSet<String> usedKeys = new java.util.HashSet<>();
-        Parameter[] methodParams = info.method.getParameters();
-        Object[] args = new Object[methodParams.length];
-        for (int i = 0; i < methodParams.length; i++) {
-            Parameter p = methodParams[i];
-            String raw = resolveValueForParam(p, singleParams, usedKeys);
-            args[i] = convertValueOrDefault(raw, p.getType());
+        LinkedHashMap<String, String> parametresSimples = new LinkedHashMap<>();
+        // Mettre d'abord les paramètres extraits de l'URL pour qu'ils priment sur les paramètres de requête
+        if (info != null && info.parametresUrl != null) {
+            for (Map.Entry<String, String> e : info.parametresUrl.entrySet()) {
+                parametresSimples.put(e.getKey(), e.getValue());
+            }
         }
-        return args;
+        // puis ajouter les paramètres de la requête s'ils ne sont pas déjà présents
+        LinkedHashMap<String, String> parametresRequete = extractSingleParams(req);
+        for (Map.Entry<String, String> e : parametresRequete.entrySet()) {
+            parametresSimples.putIfAbsent(e.getKey(), e.getValue());
+        }
+        HashSet<String> clesUtilisees = new HashSet<>();
+        Parameter[] parametresMethode = info.method.getParameters();
+        Object[] arguments = new Object[parametresMethode.length];
+        for (int i = 0; i < parametresMethode.length; i++) {
+            Parameter parametre = parametresMethode[i];
+            String valeurBrute = resolveValueForParam(parametre, parametresSimples, clesUtilisees);
+            arguments[i] = convertValueOrDefault(valeurBrute, parametre.getType());
+        }
+        return arguments;
     }
 
-    public java.util.LinkedHashMap<String, String> extractSingleParams(HttpServletRequest req) {
-        java.util.LinkedHashMap<String, String> flat = new java.util.LinkedHashMap<>();
+    public LinkedHashMap<String, String> extractSingleParams(HttpServletRequest req) {
+        LinkedHashMap<String, String> flat = new LinkedHashMap<>();
         for (Map.Entry<String, String[]> e : req.getParameterMap().entrySet()) {
             if (e.getValue() != null && e.getValue().length > 0) {
                 flat.put(e.getKey(), e.getValue()[0]);
@@ -35,7 +51,7 @@ public class CheckParameters {
         return name != null && name.matches("arg\\d+");
     }
 
-    public String resolveValueForParam(Parameter param, java.util.LinkedHashMap<String, String> singleParams, java.util.Set<String> used) {
+    public String resolveValueForParam(Parameter param, LinkedHashMap<String, String> singleParams, Set<String> used) {
         String name = param.getName();
         Class<?> type = param.getType();
         // Priorité : annotation @RequestParam si présente et non vide
@@ -60,14 +76,14 @@ public class CheckParameters {
         return candidate;
     }
 
-    public String guessSyntheticParamValue(Class<?> type, java.util.LinkedHashMap<String, String> singleParams, java.util.Set<String> used) {
+    public String guessSyntheticParamValue(Class<?> type, LinkedHashMap<String, String> singleParams, Set<String> used) {
         // priorité sur clés fréquentes
         if ((type == int.class || type == Integer.class) && singleParams.containsKey("id") && !used.contains("id")) {
             used.add("id");
             return singleParams.get("id");
         }
         // Parcours des clés restantes
-        java.util.List<String> remainingKeys = new java.util.ArrayList<>();
+        List<String> remainingKeys = new ArrayList<>();
         for (String k : singleParams.keySet()) if (!used.contains(k)) remainingKeys.add(k);
         // typage
         for (String k : remainingKeys) {
