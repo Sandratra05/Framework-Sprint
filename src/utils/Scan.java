@@ -12,6 +12,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import annotations.Controller;
+import annotations.GetMapping;
+import annotations.PostMapping;
 import annotations.Url;
 
 public class Scan {
@@ -19,24 +21,37 @@ public class Scan {
     public static class MethodInfo {
         public Class<?> clazz;
         public Method method;
+        public String methodeHttp; // "GET", "POST", etc.
         public Map<String, String> parametresUrl = new HashMap<>();
 
-        public MethodInfo(Class<?> clazz, Method method) {
+        public MethodInfo(Class<?> clazz, Method method, String methodeHttp) {
             this.clazz = clazz;
             this.method = method;
+            this.methodeHttp = methodeHttp;
         }
     }
 
-    public static HashMap<String, MethodInfo> getClassesWithAnnotations(String packageName) throws Exception {
-        HashMap<String, MethodInfo> result = new HashMap<>();
+    public static HashMap<String, List<MethodInfo>> getClassesWithAnnotations(String packageName) throws Exception {
+        HashMap<String, List<MethodInfo>> result = new HashMap<>();
         List<Class<?>> classes = getClasses(packageName);
 
         for (Class<?> clazz : classes) {
             if (clazz.isAnnotationPresent(Controller.class)) {
                 for (Method method : clazz.getDeclaredMethods()) {
-                    if (method.isAnnotationPresent(Url.class)) {
-                        String url = method.getAnnotation(Url.class).value();
-                        result.put(url, new MethodInfo(clazz, method));
+                    String url = null;
+                    String methodeHttp = null;
+                    if (method.isAnnotationPresent(GetMapping.class)) {
+                        url = method.getAnnotation(GetMapping.class).value();
+                        methodeHttp = "GET";
+                    } else if (method.isAnnotationPresent(PostMapping.class)) {
+                        url = method.getAnnotation(PostMapping.class).value();
+                        methodeHttp = "POST";
+                    } else if (method.isAnnotationPresent(Url.class)) {
+                        url = method.getAnnotation(Url.class).value();
+                        methodeHttp = "ANY"; // pour compatibilité avec l'ancien @Url
+                    }
+                    if (url != null) {
+                        result.computeIfAbsent(url, k -> new ArrayList<>()).add(new MethodInfo(clazz, method, methodeHttp));
                     }
                 }
             }
@@ -45,31 +60,39 @@ public class Scan {
     }
 
     /**
-     * Trouve la première MethodInfo dont la clé (pattern) matche l'url fournie.
-     * Supporte des patterns de la forme "/ressources/{id}/sub" où chaque
-     * "{...}" correspond à un segment générique (ne contient pas '/').
-     * Ne récupère pas encore les valeurs des paramètres, seulement la correspondance.
+     * Trouve la première MethodInfo dont l'url matche et la méthode HTTP correspond.
+     * Supporte des patterns de la forme "/ressources/{id}/sub".
      */
-    public static MethodInfo findMatching(HashMap<String, MethodInfo> map, String path) {
+    public static MethodInfo findMatching(HashMap<String, List<MethodInfo>> map, String path, String methodeHttp) {
         if (map == null) return null;
         // match exact d'abord
-        if (map.containsKey(path)) return map.get(path);
+        List<MethodInfo> liste = map.get(path);
+        if (liste != null) {
+            for (MethodInfo info : liste) {
+                if (methodeHttp.equals(info.methodeHttp) || "ANY".equals(info.methodeHttp)) {
+                    return info;
+                }
+            }
+        }
 
-        for (Map.Entry<String, MethodInfo> e : map.entrySet()) {
+        for (Map.Entry<String, List<MethodInfo>> e : map.entrySet()) {
             String pattern = e.getKey();
             String regex = motifEnRegex(pattern);
             try {
                 Pattern p = Pattern.compile(regex);
                 Matcher m = p.matcher(path);
                 if (m.matches()) {
-                    MethodInfo info = e.getValue();
-                    // extraire les noms des paramètres et remplir parametresUrl
-                    List<String> noms = extraireNomsParametres(pattern);
-                    for (int i = 0; i < noms.size(); i++) {
-                        String val = m.group(i + 1);
-                        info.parametresUrl.put(noms.get(i), val);
+                    for (MethodInfo info : e.getValue()) {
+                        if (methodeHttp.equals(info.methodeHttp) || "ANY".equals(info.methodeHttp)) {
+                            // extraire les noms des paramètres et remplir parametresUrl
+                            List<String> noms = extraireNomsParametres(pattern);
+                            for (int i = 0; i < noms.size(); i++) {
+                                String val = m.group(i + 1);
+                                info.parametresUrl.put(noms.get(i), val);
+                            }
+                            return info;
+                        }
                     }
-                    return info;
                 }
             } catch (Exception ex) {
                 // ignorer motif invalide
