@@ -2,7 +2,6 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
-import java.lang.reflect.Parameter;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
@@ -10,6 +9,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -26,7 +26,7 @@ import view.ModelView;
 public class FrontServlet extends HttpServlet {
 
     RequestDispatcher defaultDispatcher;
-    HashMap<String, Scan.MethodInfo> urlMapping;
+    HashMap<String, List<Scan.MethodInfo>> urlMapping;
 
     @Override
     public void init() {
@@ -74,11 +74,11 @@ public class FrontServlet extends HttpServlet {
         String path = req.getRequestURI().substring(req.getContextPath().length());
         
         @SuppressWarnings("unchecked")
-        HashMap<String, Scan.MethodInfo> urlMaps = (HashMap<String, Scan.MethodInfo>) getServletContext().getAttribute("urlMapping");
+        HashMap<String, List<Scan.MethodInfo>> urlMaps = (HashMap<String, List<Scan.MethodInfo>>) getServletContext().getAttribute("urlMapping");
 
 
         // find matching method (support patterns like /livres/{id})
-        Scan.MethodInfo info = Scan.findMatching(urlMaps, path);
+        Scan.MethodInfo info = Scan.findMatching(urlMaps, path, req.getMethod());
         if (info != null) {
             try {
                 Object instance = info.clazz.getDeclaredConstructor().newInstance();
