@@ -35,7 +35,7 @@ public class CheckParameters {
             Class<?> type = parametre.getType();
             if (type.equals(Map.class)) {
                 // Pour Map<String, Object>, passer tous les paramètres
-                java.util.HashMap<String, Object> paramsMap = new java.util.HashMap<>();
+                HashMap<String, Object> paramsMap = new HashMap<>();
                 for (Map.Entry<String, String> e : parametresSimples.entrySet()) {
                     paramsMap.put(e.getKey(), convertStringToObject(e.getValue()));
                 }
