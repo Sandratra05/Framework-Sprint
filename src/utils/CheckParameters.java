@@ -40,12 +40,51 @@ public class CheckParameters {
                     paramsMap.put(e.getKey(), convertStringToObject(e.getValue()));
                 }
                 arguments[i] = paramsMap;
+            } else if (isCustomObject(type)) {
+                // Pour objets personnalisés, utiliser le nom du paramètre comme préfixe
+                String prefix = parametre.getName() + ".";
+                arguments[i] = createAndPopulateObject(type, parametresSimples, clesUtilisees, prefix);
             } else {
                 String valeurBrute = resolveValueForParam(parametre, parametresSimples, clesUtilisees);
                 arguments[i] = convertValueOrDefault(valeurBrute, type);
             }
         }
         return arguments;
+    }
+
+    private boolean isCustomObject(Class<?> type) {
+        return !type.isPrimitive() && !type.equals(String.class) && !type.equals(Map.class) && !type.isArray();
+    }
+
+    private Object createAndPopulateObject(Class<?> type, LinkedHashMap<String, String> singleParams, Set<String> used, String prefix) {
+        try {
+            Object instance = type.getDeclaredConstructor().newInstance();
+            for (java.lang.reflect.Field field : type.getDeclaredFields()) {
+                String fieldName = field.getName();
+                Class<?> fieldType = field.getType();
+                if (isCustomObject(fieldType)) {
+                    // Objet imbriqué : récursion avec préfixe étendu
+                    String nestedPrefix = prefix + fieldName + ".";
+                    Object nestedObject = createAndPopulateObject(fieldType, singleParams, used, nestedPrefix);
+                    field.setAccessible(true);
+                    field.set(instance, nestedObject);
+                } else {
+                    // Champ simple : chercher la clé avec préfixe
+                    String fullKey = prefix + fieldName;
+                    if (singleParams.containsKey(fullKey)) {
+                        field.setAccessible(true);
+                        String valueStr = singleParams.get(fullKey);
+                        Object convertedValue = convertValueOrDefault(valueStr, fieldType);
+                        field.set(instance, convertedValue);
+                        used.add(fullKey);
+                    }
+                }
+            }
+            return instance;
+        } catch (Exception e) {
+            // En cas d'erreur (pas de constructeur par défaut, etc.), retourner null
+            return null;
+        }
     }
 
     public LinkedHashMap<String, String> extractSingleParams(HttpServletRequest req) {
