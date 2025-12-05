@@ -2,6 +2,7 @@ package utils;
 
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,8 +32,18 @@ public class CheckParameters {
         Object[] arguments = new Object[parametresMethode.length];
         for (int i = 0; i < parametresMethode.length; i++) {
             Parameter parametre = parametresMethode[i];
-            String valeurBrute = resolveValueForParam(parametre, parametresSimples, clesUtilisees);
-            arguments[i] = convertValueOrDefault(valeurBrute, parametre.getType());
+            Class<?> type = parametre.getType();
+            if (type.equals(Map.class)) {
+                // Pour Map<String, Object>, passer tous les paramètres
+                HashMap<String, Object> paramsMap = new HashMap<>();
+                for (Map.Entry<String, String> e : parametresSimples.entrySet()) {
+                    paramsMap.put(e.getKey(), convertStringToObject(e.getValue()));
+                }
+                arguments[i] = paramsMap;
+            } else {
+                String valeurBrute = resolveValueForParam(parametre, parametresSimples, clesUtilisees);
+                arguments[i] = convertValueOrDefault(valeurBrute, type);
+            }
         }
         return arguments;
     }
@@ -122,5 +133,19 @@ public class CheckParameters {
         if (type == double.class) return 0.0;
         if (type == boolean.class) return false;
         return null;
+    }
+
+    private Object convertStringToObject(String value) {
+        if (value == null) return null;
+        // Essayer int
+        try { return Integer.parseInt(value); } catch (Exception e) {}
+        // Essayer double
+        try { return Double.parseDouble(value); } catch (Exception e) {}
+        // Essayer boolean
+        if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value) || "on".equalsIgnoreCase(value) || "1".equals(value) || "0".equals(value)) {
+            return ("on".equalsIgnoreCase(value) || "1".equals(value)) ? true : Boolean.parseBoolean(value);
+        }
+        // Sinon, rester String
+        return value;
     }
 }
