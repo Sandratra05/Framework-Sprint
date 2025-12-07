@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import annotations.JsonResponse;
 import utils.*;
 import view.ModelView;
 
@@ -120,27 +121,48 @@ public class FrontServlet extends HttpServlet {
 
         Object result = info.method.invoke(instance, args);
 
-        if (result instanceof String) {
-
-            String resultStr = (String) result;
+        if (info.method.isAnnotationPresent(JsonResponse.class)) {
+            JsonResponse annotation = info.method.getAnnotation(JsonResponse.class);
             
-            res.setContentType("text/html;charset=UTF-8");
+            String status = annotation.status();
+            
+            int code = annotation.code();
+            
+            String json = JsonUtil.createResponseJson(result, status, code);
+            
+            res.setContentType("application/json;charset=UTF-8");
+            
+            res.setStatus(code);
             
             try (PrintWriter out = res.getWriter()) {
-                out.println("Controller : " + info.clazz.getName() + "<br>");
-                out.println("Method : " + info.method.getName() + "<br>");
-                out.println(resultStr);
+                out.println(json);
             }
+        }
+        else {
 
-        } else if (result instanceof ModelView) {
-            ModelView mv = (ModelView) result;
-
-            for (Map.Entry<String, Object> entry : mv.getItems().entrySet()) {
-                req.setAttribute(entry.getKey(), entry.getValue());
-            }
+            if (result instanceof String) {
+                
+                String resultStr = (String) result;
+                
+                res.setContentType("text/html;charset=UTF-8");
+                
+                try (PrintWriter out = res.getWriter()) {
+                    out.println("Controller : " + info.clazz.getName() + "<br>");
+                    out.println("Method : " + info.method.getName() + "<br>");
+                    out.println(resultStr);
+                }
+                
+            } else if (result instanceof ModelView) {
             
-            RequestDispatcher rd = req.getRequestDispatcher(mv.getView());
-            rd.forward(req, res);
+                ModelView mv = (ModelView) result;
+
+                for (Map.Entry<String, Object> entry : mv.getItems().entrySet()) {
+                    req.setAttribute(entry.getKey(), entry.getValue());
+                }
+                
+                RequestDispatcher rd = req.getRequestDispatcher(mv.getView());
+                rd.forward(req, res);
+            }
         }
     }
 
