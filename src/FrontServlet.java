@@ -116,55 +116,74 @@ public class FrontServlet extends HttpServlet {
     }
 
     private void redirection (Object instance, Scan.MethodInfo info, HttpServletRequest req, HttpServletResponse res) throws Exception {
-        CheckParameters cp = new CheckParameters();
-        Object[] args = cp.checkArgs(info, req);
-
-        Object result = info.method.invoke(instance, args);
-
-        if (info.method.isAnnotationPresent(JsonResponse.class)) {
-            JsonResponse annotation = info.method.getAnnotation(JsonResponse.class);
+        try {
+            CheckParameters cp = new CheckParameters();
+            Object[] args = cp.checkArgs(info, req);
             
-            String status = annotation.status();
+            Object result = info.method.invoke(instance, args);
+    
+            if (info.method.isAnnotationPresent(JsonResponse.class)) {
+                JsonResponse annotation = info.method.getAnnotation(JsonResponse.class);
+                String status = annotation.status();
+                int code = annotation.code();
             
-            int code = annotation.code();
+                String json = JsonUtil.createResponseJson(result, status, code);
+                res.setContentType("application/json;charset=UTF-8");
+                res.setStatus(code);
             
-            String json = JsonUtil.createResponseJson(result, status, code);
-            
-            res.setContentType("application/json;charset=UTF-8");
-            
-            res.setStatus(code);
-            
-            try (PrintWriter out = res.getWriter()) {
-                out.println(json);
-            }
-        }
-        else {
-
-            if (result instanceof String) {
-                
-                String resultStr = (String) result;
-                
-                res.setContentType("text/html;charset=UTF-8");
-                
                 try (PrintWriter out = res.getWriter()) {
-                    out.println("Controller : " + info.clazz.getName() + "<br>");
-                    out.println("Method : " + info.method.getName() + "<br>");
-                    out.println(resultStr);
+                    out.println(json);
                 }
-                
-            } else if (result instanceof ModelView) {
-            
-                ModelView mv = (ModelView) result;
+            } else {
 
-                for (Map.Entry<String, Object> entry : mv.getItems().entrySet()) {
-                    req.setAttribute(entry.getKey(), entry.getValue());
+                if (result instanceof String) {
+
+                    res.setContentType("text/html;charset=UTF-8");
+
+                    try (PrintWriter out = res.getWriter()) {
+                        out.println("Controller : " + info.clazz.getName() + "<br>");
+                        out.println("Method : " + info.method.getName() + "<br>");
+                        out.println(result);
+                    }
+                } else if (result instanceof ModelView) {
+
+                    ModelView mv = (ModelView) result;
+
+                    for (Map.Entry<String, Object> entry : mv.getItems().entrySet()) {
+                        req.setAttribute(entry.getKey(), entry.getValue());
+                    }
+
+                    RequestDispatcher rd = req.getRequestDispatcher(mv.getView());
+                    rd.forward(req, res);
                 }
-                
-                RequestDispatcher rd = req.getRequestDispatcher(mv.getView());
-                rd.forward(req, res);
+            }
+        } catch (Exception e) {
+            if (info.method.isAnnotationPresent(JsonResponse.class)) {
+
+                int errorCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR; // 500 par défaut
+
+                if (e instanceof IllegalArgumentException) {
+                    errorCode = HttpServletResponse.SC_BAD_REQUEST; // 400
+                } else if (e instanceof NumberFormatException) {
+                    errorCode = HttpServletResponse.SC_BAD_REQUEST;
+                }
+
+                String errorJson = JsonUtil.createResponseJson(null, "error", errorCode);
+
+                res.setContentType("application/json;charset=UTF-8");
+                res.setStatus(errorCode);
+
+                try (PrintWriter out = res.getWriter()) {
+                    out.println(errorJson);
+                }
+            } else {
+                res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+
+                try (PrintWriter out = res.getWriter()) {
+                    out.println("Error processing request: " + e.getMessage());
+                }
             }
         }
     }
-
     
 }
