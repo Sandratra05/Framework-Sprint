@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -24,6 +25,11 @@ import view.ModelView;
  * the requested resource exists, it delegates to the default dispatcher - else
  * it shows the requested URL
  */
+@MultipartConfig(
+    fileSizeThreshold = 1024 * 1024, // 1 MB
+    maxFileSize = 10 * 1024 * 1024L, // 10 MB par fichier
+    maxRequestSize = 50 * 1024 * 1024L // 50 MB total
+)
 public class FrontServlet extends HttpServlet {
 
     RequestDispatcher defaultDispatcher;
