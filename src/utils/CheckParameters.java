@@ -18,7 +18,7 @@ public class CheckParameters {
     
     public Object[] checkArgs(Scan.MethodInfo info, HttpServletRequest req) {
         LinkedHashMap<String, String> parametresSimples = new LinkedHashMap<>();
-        // Mettre d'abord les paramètres extraits de l'URL pour qu'ils priment sur les paramètres de requête
+        // Mettre d'abord les paramètres extraits de l'URL pour qu'ils priment sur les paramètres de recdquête
         if (info != null && info.parametresUrl != null) {
             for (Map.Entry<String, String> e : info.parametresUrl.entrySet()) {
                 parametresSimples.put(e.getKey(), e.getValue());
@@ -90,18 +90,75 @@ public class CheckParameters {
                 }
             }
 
-            // 4) Map<String,Object> — inclure fichiers et valeurs string
+            // 4) Map<String,Object> ou Map<String,byte[]> — inclure fichiers et valeurs string
             if (type.equals(Map.class)) {
-                HashMap<String, Object> paramsMap = new HashMap<>();
-                for (Map.Entry<String, String> e : parametresSimples.entrySet()) {
-                    paramsMap.put(e.getKey(), convertStringToObject(e.getValue()));
+                // Vérifier si c'est Map<String, byte[]>
+                boolean isByteArrayMap = false;
+                if (parametre.getParameterizedType() instanceof ParameterizedType) {
+                    ParameterizedType pt = (ParameterizedType) parametre.getParameterizedType();
+                    if (pt.getActualTypeArguments().length == 2) {
+                        java.lang.reflect.Type keyType = pt.getActualTypeArguments()[0];
+                        java.lang.reflect.Type valType = pt.getActualTypeArguments()[1];
+                        if (keyType instanceof Class
+                                && ((Class<?>) keyType).equals(String.class)
+                                && valType instanceof Class
+                                && ((Class<?>) valType).isArray()
+                                && ((Class<?>) valType).getComponentType().equals(byte.class)) {
+                            isByteArrayMap = true;
+                        }
+                    }
                 }
-                // merge fichiers : si un seul Part -> Part, si plusieurs -> List<Part>
-                for (Map.Entry<String, List<Part>> fe : fichiers.entrySet()) {
-                    if (fe.getValue().size() == 1) paramsMap.put(fe.getKey(), fe.getValue().get(0));
-                    else paramsMap.put(fe.getKey(), new ArrayList<>(fe.getValue()));
+                // Vérifier @RequestParam pour filtrer les fichiers
+                String fileFilter = null;
+                if (parametre.isAnnotationPresent(RequestParam.class)) {
+                    RequestParam rp = parametre.getAnnotation(RequestParam.class);
+                    if (!rp.value().isEmpty()) {
+                        fileFilter = rp.value();
+                    }
                 }
-                arguments[i] = paramsMap;
+                if (isByteArrayMap) {
+                    // Map<String, byte[]> : clé = nom du fichier (submittedFileName), valeur = contenu en byte[]
+                    HashMap<String, byte[]> byteMap = new HashMap<>();
+                    for (Map.Entry<String, List<Part>> fe : fichiers.entrySet()) {
+                        if (fileFilter == null || fe.getKey().equals(fileFilter)) {
+                            for (Part p : fe.getValue()) {
+                                try {
+                                    String fileName = p.getSubmittedFileName();
+                                    if (fileName == null || fileName.isEmpty()) {
+                                        // fallback : utiliser le nom du champ ; ajouter index si besoin
+                                        fileName = fe.getKey();
+                                    }
+                                    // assurer unicité de la clé si plusieurs fichiers ont même nom
+                                    String key = fileName;
+                                    int dup = 1;
+                                    while (byteMap.containsKey(key)) {
+                                        key = fileName + "_" + (dup++);
+                                    }
+                                    byte[] content = p.getInputStream().readAllBytes();
+                                    byteMap.put(key, content);
+                                } catch (Exception e) {
+                                    System.out.println("[CheckParameters] error reading part: " + e);
+                                }
+                            }
+                        }
+                    }
+                    System.out.println("[CheckParameters] Assigned Map<String,byte[]> size=" + byteMap.size() + " filter=" + fileFilter);
+                    arguments[i] = byteMap;
+                } else {
+                    // Map<String, Object> normal
+                    HashMap<String, Object> paramsMap = new HashMap<>();
+                    for (Map.Entry<String, String> e : parametresSimples.entrySet()) {
+                        paramsMap.put(e.getKey(), convertStringToObject(e.getValue()));
+                    }
+                    // merge fichiers : si un seul Part -> Part, si plusieurs -> List<Part>
+                    for (Map.Entry<String, List<Part>> fe : fichiers.entrySet()) {
+                        if (fileFilter == null || fe.getKey().equals(fileFilter)) {
+                            if (fe.getValue().size() == 1) paramsMap.put(fe.getKey(), fe.getValue().get(0));
+                            else paramsMap.put(fe.getKey(), new ArrayList<>(fe.getValue()));
+                        }
+                    }
+                    arguments[i] = paramsMap;
+                }
                 continue;
             }
 
