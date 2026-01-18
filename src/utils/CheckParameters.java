@@ -11,8 +11,10 @@ import java.util.Map;
 import java.util.Set;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import annotations.RequestParam;
+import annotations.Session;
 
 public class CheckParameters {
     
@@ -37,6 +39,24 @@ public class CheckParameters {
             Parameter parametre = parametresMethode[i];
             Class<?> type = parametre.getType();
             String nomParam = parametre.getName();
+
+            // 0) @Session : injecter SessionMap si Map<String, Object>
+            if (parametre.isAnnotationPresent(Session.class) && type.equals(Map.class)) {
+                // Vérifier si c'est Map<String, Object>
+                if (parametre.getParameterizedType() instanceof ParameterizedType) {
+                    ParameterizedType pt = (ParameterizedType) parametre.getParameterizedType();
+                    if (pt.getActualTypeArguments().length == 2) {
+                        java.lang.reflect.Type keyType = pt.getActualTypeArguments()[0];
+                        java.lang.reflect.Type valType = pt.getActualTypeArguments()[1];
+                        if (keyType instanceof Class && ((Class<?>) keyType).equals(String.class) &&
+                            valType instanceof Class && ((Class<?>) valType).equals(Object.class)) {
+                            HttpSession session = req.getSession();
+                            arguments[i] = new SessionMap(session);
+                            continue;
+                        }
+                    }
+                }
+            }
 
             // 1) Part simple
             if (type.equals(Part.class)) {
