@@ -16,7 +16,7 @@ public class SessionMap implements Map<String, Object> {
 
     @Override
     public int size() {
-        // Estimation : compter les attributs de session
+        if (session == null) return 0;
         Enumeration<String> names = session.getAttributeNames();
         int count = 0;
         while (names.hasMoreElements()) {
@@ -33,11 +33,13 @@ public class SessionMap implements Map<String, Object> {
 
     @Override
     public boolean containsKey(Object key) {
+        if (session == null) return false;
         return session.getAttribute(key.toString()) != null;
     }
 
     @Override
     public boolean containsValue(Object value) {
+        if (session == null) return false;
         Enumeration<String> names = session.getAttributeNames();
         while (names.hasMoreElements()) {
             String name = names.nextElement();
@@ -50,11 +52,13 @@ public class SessionMap implements Map<String, Object> {
 
     @Override
     public Object get(Object key) {
+        if (session == null) return null;
         return session.getAttribute(key.toString());
     }
 
     @Override
     public Object put(String key, Object value) {
+        if (session == null) return null;
         Object old = session.getAttribute(key);
         session.setAttribute(key, value);
         return old;
@@ -62,6 +66,7 @@ public class SessionMap implements Map<String, Object> {
 
     @Override
     public Object remove(Object key) {
+        if (session == null) return null;
         Object old = session.getAttribute(key.toString());
         session.removeAttribute(key.toString());
         return old;
@@ -69,6 +74,7 @@ public class SessionMap implements Map<String, Object> {
 
     @Override
     public void putAll(Map<? extends String, ? extends Object> m) {
+        if (session == null) return;
         for (Entry<? extends String, ? extends Object> e : m.entrySet()) {
             session.setAttribute(e.getKey(), e.getValue());
         }
@@ -76,6 +82,7 @@ public class SessionMap implements Map<String, Object> {
 
     @Override
     public void clear() {
+        if (session == null) return;
         Enumeration<String> names = session.getAttributeNames();
         while (names.hasMoreElements()) {
             session.removeAttribute(names.nextElement());
@@ -85,6 +92,7 @@ public class SessionMap implements Map<String, Object> {
     @Override
     public Set<String> keySet() {
         Set<String> keys = new HashSet<>();
+        if (session == null) return keys;
         Enumeration<String> names = session.getAttributeNames();
         while (names.hasMoreElements()) {
             keys.add(names.nextElement());
@@ -95,6 +103,7 @@ public class SessionMap implements Map<String, Object> {
     @Override
     public Collection<Object> values() {
         Collection<Object> vals = new ArrayList<>();
+        if (session == null) return vals;
         Enumeration<String> names = session.getAttributeNames();
         while (names.hasMoreElements()) {
             vals.add(session.getAttribute(names.nextElement()));
@@ -105,6 +114,7 @@ public class SessionMap implements Map<String, Object> {
     @Override
     public Set<Entry<String, Object>> entrySet() {
         Set<Entry<String, Object>> entries = new HashSet<>();
+        if (session == null) return entries;
         Enumeration<String> names = session.getAttributeNames();
         while (names.hasMoreElements()) {
             String name = names.nextElement();

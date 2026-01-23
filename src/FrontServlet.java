@@ -9,6 +9,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +18,7 @@ import java.util.Properties;
 
 import annotations.JsonResponse;
 import utils.*;
+import utils.AuthChecker.AuthResult;
 import view.ModelView;
 
 
@@ -34,6 +37,7 @@ public class FrontServlet extends HttpServlet {
 
     RequestDispatcher defaultDispatcher;
     HashMap<String, List<Scan.MethodInfo>> urlMapping;
+    AuthChecker authChecker;
 
     @Override
     public void init() {
@@ -45,10 +49,15 @@ public class FrontServlet extends HttpServlet {
             if (input != null) {
                 props.load(input);
                 String basePackage = props.getProperty("base.package", "controllers");
-                this.urlMapping = Scan.getClassesWithAnnotations(basePackage);
+                this.urlMapping = Scan.getClassesWithAnnotations
+                (basePackage);
+                String userKey = props.getProperty("session.user.key", "user");
+                String roleKey = props.getProperty("session.role.key", "role");
+                this.authChecker = new AuthChecker(userKey, roleKey);
             } else {
                 // Fallback si le fichier n'existe pas
                 this.urlMapping = Scan.getClassesWithAnnotations("controllers");
+                this.authChecker = new AuthChecker("user", "role");
             }
 
             getServletContext().setAttribute("urlMapping", this.urlMapping);
@@ -122,6 +131,47 @@ public class FrontServlet extends HttpServlet {
     }
 
     private void redirection (Object instance, Scan.MethodInfo info, HttpServletRequest req, HttpServletResponse res) throws Exception {
+        // Vérifier l'autorisation avant de procéder
+        if (authChecker != null) {
+            // Utiliser getSession(false) pour ne pas créer de session si elle n'existe pas
+            HttpSession existingSession = req.getSession(false);
+            SessionMap sessionMap = new SessionMap(existingSession);  // SessionMap gère null
+            
+            AuthResult authResult = authChecker.checkAuthorization(info.method, sessionMap);
+            
+            if (!authResult.isAllowed()) {
+                System.out.println("[FrontServlet] Access DENIED: " + authResult.getErrorCode() + " - " + authResult.getMessage());
+                
+                // Déterminer le code HTTP approprié
+                int httpStatus;
+                switch (authResult.getErrorCode()) {
+                    case "NOT_AUTHENTICATED":
+                    case "NO_ROLE":
+                        httpStatus = HttpServletResponse.SC_UNAUTHORIZED;  // 401
+                        break;
+                    case "INSUFFICIENT_ROLE":
+                        httpStatus = HttpServletResponse.SC_FORBIDDEN;  // 403
+                        break;
+                    default:
+                        httpStatus = HttpServletResponse.SC_FORBIDDEN;
+                }
+                
+                res.setStatus(httpStatus);
+                res.setContentType("text/html;charset=UTF-8");
+                try (PrintWriter out = res.getWriter()) {
+                    out.println("<!DOCTYPE html>");
+                    out.println("<html><head><title>Access Denied</title></head><body>");
+                    out.println("<h1>" + httpStatus + " - Access Denied</h1>");
+                    out.println("<p><strong>Error:</strong> " + authResult.getErrorCode() + "</p>");
+                    out.println("<p>" + authResult.getMessage() + "</p>");
+                    out.println("<hr>");
+                    out.println("</body></html>");
+                }
+                return;  // Ne pas invoquer la méthode
+            }
+        }
+
+
         try {
             CheckParameters cp = new CheckParameters();
             Object[] args = cp.checkArgs(info, req);
