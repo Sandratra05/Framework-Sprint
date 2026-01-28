@@ -206,9 +206,18 @@ public class AdminController {
 | `@Role`          | Method          | Restricts access to authenticated users with a specific role. Implies `@Authorized`.                    |
 
 ## Build
-To build the framework as a distributable JAR file, execute the `deploy-jar.sh` script. This script compiles the source code and packages it into `frameworkServlet.jar`.
+To build the framework as a distributable JAR file, execute the `deploy-jar.sh` script on Unix-like systems or `deploy-jar.bat` on Windows. These scripts compile the source code and package it into `ririnina.jar`.
 
 ```bash
 ./deploy-jar.sh
 ```
+
+Or on Windows:
+
+```cmd
+deploy-jar.bat
+```
+
+**Note:** Run these scripts from the project root directory. If you need to copy the JAR to a specific location (e.g., for testing), modify the scripts accordingly by adding a copy command at the end.
+
 You can then include this JAR in the `WEB-INF/lib` directory of your target web application.
