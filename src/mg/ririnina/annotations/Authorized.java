@@ -1,4 +1,4 @@
-package annotations;
+package mg.ririnina.annotations;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

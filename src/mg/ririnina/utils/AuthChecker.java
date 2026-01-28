@@ -1,8 +1,9 @@
-package utils;
+package mg.ririnina.utils;
 
 import java.util.Map;
-import annotations.Authorized;
-import annotations.Role;
+
+import mg.ririnina.annotations.Role;
+import mg.ririnina.annotations.Authorized;
 
 public class AuthChecker {
     private final String userKey;

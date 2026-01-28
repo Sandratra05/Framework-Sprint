@@ -16,10 +16,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import annotations.JsonResponse;
-import utils.*;
-import utils.AuthChecker.AuthResult;
-import view.ModelView;
+import mg.ririnina.annotations.JsonResponse;
+import mg.ririnina.utils.CheckParameters;
+import mg.ririnina.utils.JsonUtil;
+import mg.ririnina.utils.Scan;
+import mg.ririnina.utils.SessionMap;
+import mg.ririnina.utils.AuthChecker;
+import mg.ririnina.utils.AuthChecker.AuthResult;
+import mg.ririnina.view.ModelView;
 
 
 

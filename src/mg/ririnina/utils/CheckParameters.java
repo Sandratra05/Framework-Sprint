@@ -1,4 +1,4 @@
-package utils;
+package mg.ririnina.utils;
 
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
@@ -13,8 +13,8 @@ import java.util.Set;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
-import annotations.RequestParam;
-import annotations.Session;
+import mg.ririnina.annotations.RequestParam;
+import mg.ririnina.annotations.Session;
 
 public class CheckParameters {
     

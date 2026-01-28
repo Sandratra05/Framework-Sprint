@@ -1,4 +1,4 @@
-package utils;
+package mg.ririnina.utils;
 
 import java.util.*;
 import jakarta.servlet.http.HttpSession;

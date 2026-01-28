@@ -1,4 +1,4 @@
-package view;
+package mg.ririnina.view;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package utils;
+package mg.ririnina.utils;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,10 +11,10 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import annotations.Controller;
-import annotations.GetMapping;
-import annotations.PostMapping;
-import annotations.Url;
+import mg.ririnina.annotations.Controller;
+import mg.ririnina.annotations.GetMapping;
+import mg.ririnina.annotations.PostMapping;
+import mg.ririnina.annotations.Url;
 
 public class Scan {
 
